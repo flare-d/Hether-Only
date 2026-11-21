@@ -1,0 +1,75 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    maven { url = 'https://maven.fabricmc.net/' }
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
+jar {
+    from('LICENSE') {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}
+
+// Validate bundled data files before packaging. This catches malformed datapack JSON
+// (including advancement predicate schema mistakes) during every normal build.
+tasks.register('validateModResources') {
+    inputs.dir('src/main/resources')
+    doLast {
+        def resources = file('src/main/resources')
+        def jsonFiles = fileTree(resources).matching { include '**/*.json' }.files
+        jsonFiles.each { jsonFile ->
+            new groovy.json.JsonSlurper().parse(jsonFile)
+        }
+
+        assert !file('src/main/resources/data/minecraft/advancement/story/follow_ender_eye.json').exists() : 'Do not override the vanilla Eye Spy advancement'
+        def eyeTag = new groovy.json.JsonSlurper().parse(file('src/main/resources/data/minecraft/tags/worldgen/structure/eye_of_ender_located.json'))
+        assert eyeTag.values.contains('minecraft:stronghold') : 'Eye of Ender must locate the vanilla stronghold key'
+        def biomeTag = new groovy.json.JsonSlurper().parse(file('src/main/resources/data/minecraft/tags/worldgen/biome/has_structure/stronghold.json'))
+        assert biomeTag.replace == false
+        assert biomeTag.values.containsAll(['minecraft:nether_wastes', 'minecraft:soul_sand_valley', 'minecraft:crimson_forest', 'minecraft:warped_forest', 'minecraft:basalt_deltas']) : 'All Nether biomes must allow strongholds'
+        def preferredBiomeTag = new groovy.json.JsonSlurper().parse(file('src/main/resources/data/minecraft/tags/worldgen/biome/stronghold_biased_to.json'))
+        assert preferredBiomeTag.replace == false
+        assert preferredBiomeTag.values.containsAll(['minecraft:nether_wastes', 'minecraft:soul_sand_valley', 'minecraft:crimson_forest', 'minecraft:warped_forest', 'minecraft:basalt_deltas']) : 'Stronghold ring placement must prefer Nether biomes'
+        def preset = new groovy.json.JsonSlurper().parse(file('src/main/resources/data/nether_only/worldgen/world_preset/nether_world.json'))
+        assert preset.dimensions['minecraft:the_nether'].generator.settings == 'nether_only:nether' : 'Nether World must use its stronghold-compatible Nether noise settings'
+        def netherNoise = new groovy.json.JsonSlurper().parse(file('src/main/resources/data/nether_only/worldgen/noise_settings/nether.json'))
+        assert netherNoise.noise.min_y == 0 && netherNoise.noise.height == 128 : 'Keep vanilla Nether terrain bounds'
+        assert netherNoise.material_rule == 'minecraft:nether' : 'Keep vanilla Nether surface generation'
+        assert netherNoise.sea_level == 63 : 'StrongholdStructure moves its pieces below sea level; Nether needs the Overworld placement level to avoid clipping strongholds into the floor'
+        def dimensionType = new groovy.json.JsonSlurper().parse(file('src/main/resources/data/nether_only/dimension_type/nether.json'))
+        assert dimensionType.coordinate_scale == 1.0 : 'Nether World should use normal-world coordinate scale'
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('validateModResources')
+}
