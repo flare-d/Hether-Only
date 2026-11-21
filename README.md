@@ -77,15 +77,6 @@ Nether World isn't a separate game or a replacement for Minecraft. It transforms
 7. Start your adventure!
 
 **Important:** Choose the Nether World preset when creating a new world. Existing worlds are not automatically transformed.
-
----
-
-## Your World. Your Rules.
-
-The Nether has always been a dangerous place to visit.
-
-Now it's the only place you have.
-
 Build your fortress above a lava sea. Explore the crimson forests. Search for forgotten Strongholds. Challenge the Ender Dragon.
 
 **Welcome to Nether World.**
