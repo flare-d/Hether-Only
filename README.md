@@ -89,5 +89,3 @@ Now it's the only place you have.
 Build your fortress above a lava sea. Explore the crimson forests. Search for forgotten Strongholds. Challenge the Ender Dragon.
 
 **Welcome to Nether World.**
-
-*There is no way back. There is only forward.*
